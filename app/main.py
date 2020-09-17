@@ -1,7 +1,9 @@
 import json
+from datetime import datetime
 
 import motor.motor_asyncio
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import ParseMode
 from aiogram.utils.emoji import emojize
 
 bot = Bot(token='1330416520:AAHmxhNUSMuWHtdpEjTRwyIhJ26JUzCltPU')
@@ -29,11 +31,27 @@ def create_kb(photo_msg_id, like, dislike):
     return keyboard_markup
 
 
+def get_name(author):
+    full_name = (author['first_name'] or ''), (author['last_name'] or '')
+    if full_name:
+        return ' '.join(full_name)
+    if author['username']:
+        return author['username']
+    return author['id']
+
+
 @dp.message_handler(content_types=types.ContentType.PHOTO)
 async def start_handler(event: types.Message):
     collection = db[str(event['chat']['id'])]
     document = {
         'photo_msg_id': event['message_id'],
+        'author': {
+            'id': event['from'].id,
+            'first_name': event['from'].first_name,
+            'last_name': event['from'].last_name,
+            'username': event['from'].username
+        },
+        'date': datetime.now(),
         'votes': {}
     }
     await collection.insert_one(document)
@@ -48,11 +66,14 @@ async def answer_callback_handler(query: types.CallbackQuery):
     value = answer_data['value']
     collection = db[str(query['message']['chat']['id'])]
     user = query['from']['id']
+    photo = await collection.find_one({'photo_msg_id': photo_msg_id})
+    if photo['author']['id'] == user:
+        return await query.answer('Тебя никто не спрашивал...')
     result = await collection.update_one({'photo_msg_id': photo_msg_id},
                                          {'$set': {f'votes.{user}': value}},
                                          upsert=True)
     if not result.modified_count:
-        return
+        return await query.answer('Что-то не так :/')
     photo = await collection.find_one({'photo_msg_id': photo_msg_id})
     likes = len([x for x in photo['votes'].values() if x == 1])
     dislikes = len([x for x in photo['votes'].values() if x == -1])
@@ -63,6 +84,23 @@ async def answer_callback_handler(query: types.CallbackQuery):
                                 message_id=message_id,
                                 text=reply_text,
                                 reply_markup=keyboard_markup)
+
+
+@dp.message_handler(commands=['rating'])
+async def cmd_rating(message: types.Message):
+    collection = db[str(message['chat']['id'])]
+    authors = await collection.distinct('author')
+    rating = {author['id']: 0 for author in authors}
+    names = {author['id']: get_name(author) for author in authors}
+    for id_ in rating:
+        async for document in collection.find({'author.id': id_}):
+            rating[id_] += sum(document['votes'].values())
+    text = '*Рейтинг участников:*\n'
+    text += '\n'.join([f'`{names[id_]}: {votes}`'
+                       for id_, votes in rating.items()])
+    await bot.send_message(message.chat.id,
+                           text,
+                           parse_mode=ParseMode.MARKDOWN)
 
 
 if __name__ == '__main__':
