@@ -1,0 +1,20 @@
+version: "3"
+services:
+  tg-ratig-bot:
+    build: .
+    restart: always
+    volumes:
+      - ./app:/app
+    logging:
+      driver: "json-file"
+      options:
+          max-size: "2m"
+          max-file: "10"
+
+  mongo:
+    image: mongo:4.4-bionic
+    restart: always
+    volumes:
+      - ./mongo-volume:/data/db
+    expose:
+      - 27017
