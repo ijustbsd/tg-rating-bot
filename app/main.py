@@ -96,8 +96,11 @@ async def cmd_rating(message: types.Message):
         async for document in collection.find({'author.id': id_}):
             rating[id_] += sum(document['votes'].values())
     text = '*Рейтинг участников:*\n'
+    sort_rating = {k: v for k, v in sorted(rating.items(),
+                                           key=lambda item: item[1],
+                                           reverse=True)}
     text += '\n'.join([f'`{names[id_]}: {votes}`'
-                       for id_, votes in rating.items()])
+                       for id_, votes in sort_rating.items()])
     await bot.send_message(message.chat.id,
                            text,
                            parse_mode=ParseMode.MARKDOWN)
