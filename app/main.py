@@ -69,6 +69,8 @@ async def answer_callback_handler(query: types.CallbackQuery):
     photo = await collection.find_one({'photo_msg_id': photo_msg_id})
     if photo['author']['id'] == user:
         return await query.answer('Тебя никто не спрашивал...')
+    if str(user) in photo['votes']:
+        return await query.answer('Первое слово дороже второго!')
     result = await collection.update_one({'photo_msg_id': photo_msg_id},
                                          {'$set': {f'votes.{user}': value}},
                                          upsert=True)
