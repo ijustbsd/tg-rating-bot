@@ -10,6 +10,7 @@ from aiogram.utils.emoji import emojize
 token = os.environ['API_TOKEN']
 show_post_rating = os.environ['SHOW_POST_RATING'] == 'True'
 show_global_rating = os.environ['SHOW_GLOBAL_RATING'] == 'True'
+previous_month_rating = os.environ['SHOW_PREVIOUS_MONTH_RATING'] == 'True'
 
 bot = Bot(token=token)
 dp = Dispatcher(bot)
@@ -112,8 +113,12 @@ async def cmd_rating(message: types.Message):
     authors = await collection.distinct('author')
     rating = {author['id']: 0 for author in authors}
     names = {author['id']: get_name(author) for author in authors}
+    now = datetime.now()
     for id_ in rating:
         async for document in collection.find({'author.id': id_}):
+            if previous_month_rating:
+                if document['date'].month != ((now.month - 1) or 12):
+                    continue
             rating[id_] += sum(document['votes'].values())
     text = '*Рейтинг участников:*\n'
     sort_rating = {k: v for k, v in sorted(rating.items(),

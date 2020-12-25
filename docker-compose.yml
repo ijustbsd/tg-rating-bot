@@ -14,6 +14,7 @@ services:
       - API_TOKEN=<BOT_TOKEN>
       - SHOW_POST_RATING=False
       - SHOW_GLOBAL_RATING=False
+      - SHOW_PREVIOUS_MONTH_RATING=True
 
   mongo:
     image: mongo:4.4-bionic
