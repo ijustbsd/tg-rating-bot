@@ -91,7 +91,7 @@ async def answer_callback_handler(query: types.CallbackQuery):
     if not result.modified_count:
         return await query.answer('Что-то не так :/')
     if not show_post_rating:
-        return
+        return await query.answer('Ваш голос учтён!')
     photo = await collection.find_one({'photo_msg_id': photo_msg_id})
     likes = len([x for x in photo['votes'].values() if x == 1])
     dislikes = len([x for x in photo['votes'].values() if x == -1])
